@@ -145,7 +145,7 @@ inline uint64_t length(const vector<uint16_t>& tour, const Matrix<uint32_t>& d) 
  * @param end End index of segment to reverse.
  * @param position Position of each city in the input tour. Will be updated.
  */
-inline void reverse(vector<uint16_t> &tour, size_t start, size_t end,
+inline void reverse(vector<uint16_t> &tour, size_t start, size_t end,=
         vector<uint16_t>& position) {
     size_t N = tour.size();
     size_t numSwaps = (((start <= end ? end - start : (end + N) - start) + 1)/2);
@@ -246,6 +246,7 @@ Matrix<uint16_t> createNeighborsMatrix(const Matrix<uint32_t>& d, size_t K) {
             row[j] = (i == j) ? ++k : k;
         }
         // Sort K first elements in row by distance to i.
+        // partial_sort runs in (last-first)log(middle-first)), use bst or heap
         partial_sort(row.begin(), row.begin() + K, row.end(),
             [&](uint16_t j, uint16_t k) {
                 return d[i][j] < d[i][k];
@@ -268,14 +269,14 @@ Matrix<uint16_t> createNeighborsMatrix(const Matrix<uint32_t>& d, size_t K) {
 inline vector<uint16_t> greedy(const Matrix<uint32_t>& d) {
     size_t N = d.rows();
     vector<uint16_t> tour(N);
-    vector<bool> used(N, false);
+    vector<bool> used(N, false); // can change to bitset
     tour[0] = 0;
     used[0] = true;
     for (size_t i = 1; i < N; ++i) {
         // Find k, the closest city to the (i - 1):th city in tour.
         int32_t k = -1;
         for (uint16_t j = 0; j < N; ++j) {
-            if (!used[j] && (k == -1 || d[tour[i-1]][j] < d[tour[i-1]][k])) {
+            if (!used[j] && (k == -1 || d[tour[i-1]][j] < d[tour[i-1]][k])) { // could speed up
                 k = j;
             }
         }
@@ -536,7 +537,7 @@ vector<uint16_t> approximate(istream &in, const chrono::time_point<T>& deadline)
     const size_t N = d.rows();           // Number of cities.
 
     // Generate initial greedy tour.
-    vector<uint16_t> tour = greedy(d);
+    vector<uint16_t> tour = greedy(d); // change to MF, see Fast algorithms for geometric traveling salesman problems.
 
     // Create max / position for initial 2-opt + 3-opt.
     vector<uint16_t> position(N);
@@ -549,9 +550,10 @@ vector<uint16_t> approximate(istream &in, const chrono::time_point<T>& deadline)
     // Optimize tour with 2-opt + 3-opt.
     twoOpt(tour, d, neighbor, position, max, min);
     threeOpt(tour, d, neighbor, position, max, min, threeOptDeadline);
+    // add 2H-opt
 
     /*
-     * Main loop.
+     * Main loop
      *
      * We repeatedly
      *
@@ -591,6 +593,7 @@ vector<uint16_t> approximate(istream &in, const chrono::time_point<T>& deadline)
         // Optimize tour with 2-opt + 3-opt.
         twoOpt(tour, d, neighbor, position, max, min);
         threeOpt(tour, d, neighbor, position, max, min, threeOptDeadline);
+        // add 2H-opt
 
         uint64_t tourLength = length(tour, d);
         if (tourLength < shortestTourLength) {
@@ -622,3 +625,8 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+
+// strategy
+// 1. u_int16_t, u_int32_t, int16_t, int32_t
+// 2. inline
+// 3. const
