@@ -675,8 +675,8 @@ vector<uint16_t> approximate(istream &in, const chrono::time_point<T>& deadline)
             // } else {
             //     shuffle(tour.begin() + B, tour.begin() + A, rng);
             // }
-            size_t A = rand % N;
-            shuffle(tour.begin() + A, Minimum(tour.end(), A+N/10), rng);
+            size_t A = rand() % (N - N / 10);
+            shuffle(tour.begin() + A, tour.begin() + A + N / 10, rng);
             
         } else {
             // Tiny tour, so just shuffle it instead.
