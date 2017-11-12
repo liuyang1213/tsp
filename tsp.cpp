@@ -11,6 +11,9 @@
 #include <random>
 #include <stack>
 #include <bitset>
+#include <utility>
+#include <set>
+#include <unordered_set>
 
 
 /**
@@ -65,6 +68,9 @@ std::ostream& operator<<(std::ostream& os, const Matrix<T>& matrix) {
 #endif
 
 using namespace std;
+
+typedef pair<uint32_t, uint16_t> pq_entry;
+typedef pair<uint16_t, uint16_t> edge;
 
 // Random number generator.
 random_device rd;
@@ -146,7 +152,7 @@ inline uint64_t length(const vector<uint16_t>& tour, const Matrix<uint32_t>& d) 
  * @param end End index of segment to reverse.
  * @param position Position of each city in the input tour. Will be updated.
  */
-inline void reverse(vector<uint16_t> &tour, size_t start, size_t end,=
+inline void reverse(vector<uint16_t> &tour, size_t start, size_t end,
         vector<uint16_t>& position) {
     size_t N = tour.size();
     size_t numSwaps = (((start <= end ? end - start : (end + N) - start) + 1)/2);
@@ -271,7 +277,7 @@ inline vector<uint16_t> greedy(const Matrix<uint32_t>& d) {
     size_t N = d.rows();
     vector<uint16_t> tour(N);
     // vector<bool> used(N, false); // can change to bitset
-	bitset<N> used1;
+	bitset<1000> used1;
 	
     tour[0] = 0;
     // used[0] = true;
@@ -285,8 +291,75 @@ inline vector<uint16_t> greedy(const Matrix<uint32_t>& d) {
             }
         }
         tour[i] = k;
+        // used[k] = true;
         used1.set(k);
     }
+    return tour;
+}
+
+inline vector<uint16_t> mf(const Matrix<uint32_t>& d, const Matrix<uint16_t>& neighbor) {
+    size_t N = d.rows();
+    vector<uint16_t> tour(N);
+    vector<vector<uint16_t>> edges(N);
+
+    vector<uint16_t> degree(N);
+    vector<uint16_t> nnlink(N);
+    vector<uint16_t> tail(N);
+    set<pq_entry> pq;
+
+    for (size_t i = 0; i < N; i++) {
+        degree[i] = 0;
+        nnlink[i] = 0; // the closest neighbor's index in neighbor matrix
+        pq.insert(make_pair(d[i][neighbor[i][0]], i));
+        tail[i] = i;
+    }    
+
+    uint16_t x, y;
+    for (size_t i = 0; i < N; i++) {
+        while (true) {
+            pq_entry entry = *pq.begin();
+            x = entry.second;
+            y = neighbor[x][nnlink[x]];
+			pq.erase(pq.begin());
+			
+            if (degree[x] == 2) {
+                continue;
+            }
+				
+            for(uint16_t k=nnlink[x]+1; k<N-1; k++){
+                if(degree[neighbor[x][k]] == 2) {
+                    continue;
+                }
+                nnlink[x] = k;
+                break;
+            }
+            pq.insert(make_pair(d[x][neighbor[x][nnlink[x]]], x));
+  
+            if (degree[y] < 2 && (i==N-1 || y != tail[x])) {
+                break;
+            }
+        }
+
+		edges[x].push_back(y);
+		edges[y].push_back(x);
+
+		degree[x]++, degree[y]++;
+
+		uint16_t tx=tail[x];
+		tail[tail[x]] = tail[y];
+		tail[tail[y]] = tx;
+    }    
+
+    tour[0] = 0;
+    tour[1] = edges[0][0];
+    for (size_t i = 2; i < N; ++i) {
+        if(edges[tour[i-1]][0] == tour[i-2]) {
+            tour[i]=edges[tour[i-1]][1];
+        }else{
+            tour[i]=edges[tour[i-1]][0];
+        }
+    }
+
     return tour;
 }
 
@@ -536,12 +609,19 @@ vector<uint16_t> approximate(istream &in, const chrono::time_point<T>& deadline)
 
     // Calculate distance / K-nearest neighbors matrix.
     const Matrix<uint32_t> d = createDistanceMatrix(in);
+    vector<uint16_t> tour;
+    if(d.rows() == 1) {
+		tour.push_back(0);
+		return tour;
+	}
+    
     const Matrix<uint16_t> neighbor = createNeighborsMatrix(d, MAX_K);
     const uint32_t min = minDistance(d); // Shortest distance.
     const size_t N = d.rows();           // Number of cities.
 
     // Generate initial greedy tour.
-    vector<uint16_t> tour = greedy(d); // change to MF, see Fast algorithms for geometric traveling salesman problems.
+    tour = greedy(d); // change to MF, see Fast algorithms for geometric traveling salesman problems.
+    // tour = mf(d, neighbor); 
 
     // Create max / position for initial 2-opt + 3-opt.
     vector<uint16_t> position(N);
@@ -579,9 +659,25 @@ vector<uint16_t> approximate(istream &in, const chrono::time_point<T>& deadline)
     for (i = 0; (now() + std::max(fifty_ms, 2 * averageTime)) < deadline; ++i) {
         auto start = now();
 
+        tour = shortestTour;
         if (N >= 8) {
             // Perform random 4-opt "double bridge" move.
-            tour = doubleBridge(tour);
+            // tour = doubleBridge(tour);
+            // uniform_int_distribution<size_t> randomOffset(1, N / 3);
+            // size_t A, B;
+            // do {
+            //     A = rand()%N;
+            //     B = rand()%N;          
+            // } while (A == B);
+
+            // if (A < B) {
+            //     shuffle(tour.begin() + A, tour.begin() + B, rng);
+            // } else {
+            //     shuffle(tour.begin() + B, tour.begin() + A, rng);
+            // }
+            size_t A = rand % N;
+            shuffle(tour.begin() + A, Minimum(tour.end(), A+N/10), rng);
+            
         } else {
             // Tiny tour, so just shuffle it instead.
             shuffle(tour.begin(), tour.end(), rng);
