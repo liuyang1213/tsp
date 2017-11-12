@@ -10,6 +10,7 @@
 #include <limits>
 #include <random>
 #include <stack>
+#include <bitset>
 
 
 /**
@@ -269,19 +270,22 @@ Matrix<uint16_t> createNeighborsMatrix(const Matrix<uint32_t>& d, size_t K) {
 inline vector<uint16_t> greedy(const Matrix<uint32_t>& d) {
     size_t N = d.rows();
     vector<uint16_t> tour(N);
-    vector<bool> used(N, false); // can change to bitset
+    // vector<bool> used(N, false); // can change to bitset
+	bitset<N> used1;
+	
     tour[0] = 0;
-    used[0] = true;
+    // used[0] = true;
+    used1.set(0);
     for (size_t i = 1; i < N; ++i) {
         // Find k, the closest city to the (i - 1):th city in tour.
         int32_t k = -1;
         for (uint16_t j = 0; j < N; ++j) {
-            if (!used[j] && (k == -1 || d[tour[i-1]][j] < d[tour[i-1]][k])) { // could speed up
+            if (!used1[j] && (k == -1 || d[tour[i-1]][j] < d[tour[i-1]][k])) { // could speed up
                 k = j;
             }
         }
         tour[i] = k;
-        used[k] = true;
+        used1.set(k);
     }
     return tour;
 }
